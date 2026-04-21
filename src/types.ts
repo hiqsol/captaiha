@@ -1,5 +1,15 @@
+/**
+ * CAPTAIHA challenge types.
+ *
+ * Design principle: every challenge must require REASONING (LLM-level intelligence).
+ * Three-tier filtering:
+ *   ❌ Human — too fast / too complex for working memory
+ *   ❌ Dumb bot — no reasoning capability, can't understand the task
+ *   ✅ AI agent — fast AND intelligent
+ */
+
 /** Supported challenge type identifiers */
-export type ChallengeType = 'sha256-chain' | 'code-synthesis' | 'semantic-math';
+export type ChallengeType = 'code-synthesis' | 'semantic-math' | 'reasoning-hash';
 
 /** Challenge issued to an agent */
 export interface Challenge {
