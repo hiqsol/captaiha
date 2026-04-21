@@ -1,17 +1,24 @@
 /**
- * CAPTAIHA challenge types.
+ * CAPTAICHA — Three-tier CAPTCHA: AI vs Computer vs Human
  *
- * Design principle: every challenge must require REASONING (LLM-level intelligence).
- * Three-tier filtering:
- *   ❌ Human — too fast / too complex for working memory
- *   ❌ Dumb bot — no reasoning capability, can't understand the task
- *   ✅ AI agent — fast AND intelligent
+ * Every challenge is a prism that splits responses into three signals:
+ *   🤖 AI agent  — reasoning ✅ speed ✅ creativity ✅
+ *   💻 Computer  — reasoning ❌ speed ✅ creativity ❌
+ *   🧑 Human     — reasoning ✅ speed ❌ creativity ✅
  */
 
-/** Supported challenge type identifiers */
-export type ChallengeType = 'code-synthesis' | 'semantic-math' | 'reasoning-hash';
+/** Entity type classification result */
+export type EntityType = 'ai' | 'computer' | 'human' | 'unclassified';
 
-/** Challenge issued to an agent */
+/** Supported challenge type identifiers */
+export type ChallengeType =
+  | 'code-synthesis'
+  | 'semantic-math'
+  | 'reasoning-hash'
+  | 'pattern-completion'
+  | 'adversarial-decode';
+
+/** Challenge issued to an entity */
 export interface Challenge {
   id: string;
   type: ChallengeType;
@@ -23,13 +30,36 @@ export interface Challenge {
   createdAt: string;
 }
 
-/** Verification result */
-export interface VerifyResult {
-  passed: boolean;
-  /** Time taken by agent in ms (if available) */
+/** Three-dimensional signal extracted from a response */
+export interface Signals {
+  /** Did the entity demonstrate understanding? */
+  reasoning: boolean;
+  /** Response time in milliseconds */
+  speed: number;
+  /** Creativity/novelty score 0-1 (0 = template, 1 = fully novel) */
+  creativity: number;
+}
+
+/** Classification result — the core output */
+export interface ClassifyResult {
+  /** Detected entity type */
+  entity: EntityType;
+  /** Classification confidence 0-1 */
+  confidence: number;
+  /** Raw signals from the challenge */
+  signals: Signals;
+  /** Time taken in ms */
   ms?: number;
-  /** Reason for failure (if any) */
+  /** Explanation if unclassified */
   reason?: string;
+}
+
+/** Multi-challenge suite result */
+export interface SuiteResult {
+  entity: EntityType;
+  confidence: number;
+  /** Per-challenge breakdown */
+  breakdown: ClassifyResult[];
 }
 
 /** Options passed to challenge generator */
@@ -45,6 +75,6 @@ export interface ChallengeProvider {
   type: ChallengeType;
   /** Generate a new challenge */
   generate(options: ChallengeOptions): Challenge;
-  /** Verify an agent's response */
-  verify(challenge: Challenge, response: unknown): VerifyResult;
+  /** Classify an entity's response — returns signals, not just pass/fail */
+  classify(challenge: Challenge, response: unknown): ClassifyResult;
 }

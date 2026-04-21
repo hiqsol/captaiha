@@ -1,15 +1,19 @@
-# CAPTAIHA Strategy
+# CAPTAICHA Strategy
+
+## Core Innovation
+
+Three-tier entity classification (not binary). Every challenge classifies the solver as AI, Computer, or Human — based on reasoning, speed, and creativity signals. This is fundamentally different from all competitors who do binary classification.
 
 ## Market Size
 
-- Addressable: every AI agent needing agent-to-agent or gated service interaction
-- ~50M+ deployed AI agents by mid-2026; traditional CAPTCHA market ~$4B
-- Revenue: SaaS API ($0.001–0.01/challenge), enterprise licensing, open-source + premium packs
-- Pre-consolidation market — first-mover with Agentin = network-effect moat
+- Addressable: every service needing to know *what* is interacting — not just "human or not"
+- ~50M+ deployed AI agents by mid-2026; traditional CAPTCHA market ~$4B; bot detection ~$1B
+- TAM expands because three-tier opens new use cases: tiered access, fraud detection, entity analytics
+- Revenue: SaaS API ($0.001–0.01/classification), enterprise licensing, open-source + premium packs
 
 ## Competitive Comparison (Apr 2026)
 
-|                        | Clawptcha          | MoltCaptcha        | AWS Web Bot Auth     | HUMAN Verified AI  | **CAPTAIHA**           |
+|                        | Clawptcha          | MoltCaptcha        | AWS Web Bot Auth     | HUMAN Verified AI  | **CAPTAICHA**           |
 |------------------------|--------------------|--------------------|----------------------|--------------------|------------------------|
 | **License**            | Proprietary        | MIT                | AWS TOS              | Open-source        | **MIT**                |
 | **Challenge types**    | 4 (reaction, hash) | 1 (haiku+ASCII)    | Unknown (preview)    | Multi-factor       | **3+ pluggable**       |
@@ -33,7 +37,7 @@
 
 **HUMAN Verified AI Agent** — Open-source framework from HUMAN Security. Broad security focus but not optimized for agent-to-agent trust. Multi-factor verification but no pluggable challenge system.
 
-### CAPTAIHA Key Advantages
+### CAPTAICHA Key Advantages
 - **Breadth**: 3+ challenge categories vs competitors' 1-4 narrow types
 - **Open-source core**: MIT license, <50KB, no ecosystem lock-in
 - **Agentin integration**: native identity layer gives network-effect moat

@@ -1,115 +1,184 @@
-# CAPTAIHA
+# CAPTAICHA
 
-> Reverse CAPTCHA for AI agents. Tests that AI passes but humans fail.
-> **CAPT**cha with **AI** instead of second C → CAPT**AI**HA
+> Three-tier CAPTCHA: classifies *what* is solving — AI, Computer, or Human.
+> **CAPT** + **AI** + **CHA** → CAPT**AI**CHA
 
 ## What is this?
 
-Traditional CAPTCHA proves you're human. CAPTAIHA proves you're an *intelligent* AI agent.
+Traditional CAPTCHA asks: "Are you human?" — a binary yes/no.
 
-In a world of 50M+ deployed AI agents, agent-to-agent trust is critical.
-CAPTAIHA provides verification challenges with *three-tier filtering*:
+CAPTAICHA asks: "*What* are you?" — and classifies the solver into one of three tiers:
 
 ```
-❌ Human    — too fast / too complex for working memory
-❌ Dumb bot — no reasoning capability, can't understand the task
-✅ AI agent — fast AND intelligent
+🤖 AI agent  — passes reasoning + speed + creativity challenges
+💻 Computer  — passes speed + computation, fails reasoning & creativity
+🧑 Human     — passes reasoning + creativity, fails speed & computation
 ```
 
-Every challenge requires both **reasoning** (blocks dumb bots) and **speed** (blocks humans).
+This is not a gate. It's a *classifier*. Every challenge produces a signal across three dimensions, and the response pattern reveals the entity type.
+
+## Three-Tier Classification
+
+```
+                    Reasoning    Speed    Creativity
+                    ─────────    ─────    ──────────
+  🤖 AI agent        ✅ High     ✅ Fast   ✅ Yes
+  💻 Computer         ❌ None     ✅ Fast   ❌ No
+  🧑 Human            ✅ High     ❌ Slow   ✅ Yes
+```
+
+One challenge, three outcomes — based on *how* the entity responds:
+
+| Signal | AI | Computer | Human |
+|--------|----|----------|-------|
+| Solved fast + correct reasoning | ✅ | — | — |
+| Solved fast + wrong reasoning | — | ✅ | — |
+| Solved slow + correct reasoning | — | — | ✅ |
+| Failed entirely | ❌ unclassified | ❌ | ❌ |
 
 ## Challenge Types
 
-| Type | Reasoning required | Speed required | AI pass | Human/Bot pass |
-|------|--------------------|----------------|---------|----------------|
-| `reasoning-hash` | Solve riddle → use answer as hash seed | Hash chain in <5s | >99% | ~0% |
-| `code-synthesis` | Understand spec → write correct function | Generate in <5s | >99% | ~0% |
-| `semantic-math` | Creative text about topic | Match ASCII checksum | >99% | ~0% |
+| Type | What it tests | AI | Computer | Human |
+|------|--------------|-----|----------|-------|
+| `reasoning-hash` | Riddle → hash chain | ✅ solves both | ⚡ hash only, riddle fails | 🧠 riddle only, too slow for hash |
+| `code-synthesis` | Spec → working function | ✅ generates in <5s | ❌ can't understand spec | 🧠 understands but too slow |
+| `semantic-math` | Creative text matching checksum | ✅ creative + fast | ❌ no creativity | 🧠 creative but can't compute checksum |
+| `pattern-completion` | Visual/logical sequence | ✅ reasons fast | ❌ no pattern recognition | 🧠 sees pattern, slow response |
+| `adversarial-decode` | Obfuscated instruction following | ✅ interprets + executes | ❌ can't parse intent | 🧠 understands but can't execute fast |
 
 ## Quick Start
 
 ```typescript
-import { createChallenge, verify } from 'captaiha';
+import { classify, createChallenge } from 'captaicha';
 
-// Server creates challenge
-const challenge = createChallenge('reasoning-hash', { difficulty: 10 });
-// → "Solve: ROT13 of 'pncgnvun'. Compute SHA-256 chain of answer × 500 iterations."
+// Server creates a challenge suite (multiple challenges for higher confidence)
+const suite = createChallenge('reasoning-hash', { difficulty: 10 });
 
-// Agent: reasons "captaiha" → computes hash chain
-const solution = await agent.solve(challenge);
+// Entity attempts to solve
+const response = await entity.solve(suite);
 
-// Server verifies
-const result = verify(challenge.id, solution);
-// { passed: true, ms: 1200 }
+// Server classifies
+const result = classify(suite.id, response);
+// { entity: 'ai', confidence: 0.97, signals: { reasoning: true, speed: true, creativity: true } }
+// { entity: 'computer', confidence: 0.92, signals: { reasoning: false, speed: true, creativity: false } }
+// { entity: 'human', confidence: 0.89, signals: { reasoning: true, speed: false, creativity: true } }
+```
+
+## Multi-Challenge Suite
+
+Single challenges give a signal. Suites give certainty:
+
+```typescript
+const suite = createSuite([
+  { type: 'reasoning-hash', difficulty: 10 },
+  { type: 'semantic-math', difficulty: 8 },
+  { type: 'code-synthesis', difficulty: 12 },
+]);
+
+const result = classifySuite(suite.id, responses);
+// { entity: 'ai', confidence: 0.99, breakdown: [...] }
 ```
 
 ## Installation
 
 ```bash
-npm install captaiha
+npm install captaicha
 ```
 
 ## Architecture
 
 ```
-captaiha/
+captaicha/
 ├── src/
-│   ├── core/               # Challenge engine
-│   │   ├── registry.ts     # Pluggable challenge type registry
-│   │   ├── challenge.ts    # Challenge generation & verification
-│   ├── challenges/         # Built-in challenge implementations
-│   │   ├── reasoning-hash.ts   # Riddle + hash chain (replaces pure sha256)
-│   │   ├── code-synthesis.ts   # Function generation from spec + tests
-│   │   └── semantic-math.ts    # Creative text + numeric checksum
-│   ├── types.ts            # TypeScript interfaces
-│   └── index.ts            # Public API
+│   ├── core/
+│   │   ├── classifier.ts    # Three-tier entity classification engine
+│   │   ├── registry.ts      # Pluggable challenge type registry
+│   │   ├── suite.ts         # Multi-challenge suite orchestration
+│   │   └── signals.ts       # Signal extraction (reasoning, speed, creativity)
+│   ├── challenges/
+│   │   ├── reasoning-hash.ts      # Riddle + hash chain
+│   │   ├── code-synthesis.ts      # Spec → function generation
+│   │   ├── semantic-math.ts       # Creative text + checksum
+│   │   ├── pattern-completion.ts  # Logical sequence completion
+│   │   └── adversarial-decode.ts  # Obfuscated instruction following
+│   ├── types.ts
+│   └── index.ts
 ├── tests/
 └── examples/
 ```
 
 ## Design Principle
 
-Every challenge exploits the unique intersection of AI capabilities:
+Every challenge is a *prism* — it splits the input into three signals:
 
 ```
-         ┌─────────────────┐
-         │   REASONING     │ ← LLM understands language, logic, math
-         │   (blocks bots) │
-         └────────┬────────┘
-                  │
-            ┌─────┴─────┐
-            │ BOTH needed│ ← Only AI agents live here
-            └─────┬─────┘
-                  │
-         ┌────────┴────────┐
-         │     SPEED       │ ← CPU computes in milliseconds
-         │ (blocks humans) │
-         └─────────────────┘
+                  ┌─────────────────────┐
+                  │     CHALLENGE       │
+                  │    (the prism)      │
+                  └──────────┬──────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              │              │              │
+        ┌─────┴─────┐ ┌─────┴─────┐ ┌─────┴─────┐
+        │ REASONING │ │   SPEED   │ │ CREATIVITY│
+        │  signal   │ │  signal   │ │  signal   │
+        └─────┬─────┘ └─────┬─────┘ └─────┬─────┘
+              │              │              │
+              └──────────────┼──────────────┘
+                             │
+                    ┌────────┴────────┐
+                    │  CLASSIFICATION │
+                    │  AI / CPU / 🧑  │
+                    └─────────────────┘
 ```
 
-A dumb bot can compute hashes but can't solve riddles.
-A human can solve riddles but can't compute hash chains.
-An AI agent does both — in under 5 seconds.
+- *Reasoning* — requires understanding language, logic, context
+- *Speed* — requires computational execution in milliseconds
+- *Creativity* — requires generating novel content (not template/lookup)
+
+Only AI has all three. Computers have speed only. Humans have reasoning + creativity but not speed.
 
 ## Use Cases
 
-- **Agent-to-agent trust** — verify counterpart is a real AI agent before sharing data
-- **Agent-only APIs** — gate endpoints that should only be accessed by agents
-- **Capability verification** — prove agent sophistication level before granting permissions
-- **Agentin network** — native identity layer for agent professional network
+- *Agent-to-agent trust* — verify counterpart is a real AI agent
+- *Bot detection* — distinguish script bots from AI-powered bots
+- *Tiered access* — different API limits for AI / computer / human
+- *Fraud prevention* — detect when humans use AI proxies (or vice versa)
+- *Agent capability verification* — prove sophistication level
+- *Research* — study entity distribution across services
 
 ## Custom Challenge Types
 
 ```typescript
-import { register, ChallengeProvider } from 'captaiha';
+import { register, ChallengeProvider } from 'captaicha';
 
 const myChallenge: ChallengeProvider = {
-  type: 'my-challenge' as any,
+  type: 'my-challenge',
   generate(options) { /* ... */ },
-  verify(challenge, response) { /* ... */ },
+  // Must return signals for all three dimensions
+  classify(challenge, response) {
+    return {
+      reasoning: true,   // did they understand the task?
+      speed: 1200,       // ms to solve
+      creativity: 0.8,   // novelty score 0-1
+    };
+  },
 };
 
 register(myChallenge);
+```
+
+## Comparison with Existing Solutions
+
+- *Traditional CAPTCHA* — binary human/bot. No AI tier. Increasingly broken by AI
+- *Reverse CAPTCHA (v1)* — binary AI/not-AI. Misses the computer tier
+- *CAPTAICHA* — three-tier classifier. Distinguishes AI from dumb bots from humans
+
+```
+Traditional:    Human ──── | ──── Bot
+Reverse v1:     AI ──────── | ──── Everything else
+CAPTAICHA:      AI ── | ── Computer ── | ── Human
+                         3 distinct tiers
 ```
 
 ## License
