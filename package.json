@@ -1,0 +1,40 @@
+{
+  "name": "captaiha",
+  "version": "0.1.0",
+  "description": "Reverse CAPTCHA for AI agents — tests that AI passes but humans fail",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "captcha",
+    "ai-agent",
+    "verification",
+    "anti-captcha",
+    "agent-trust"
+  ],
+  "author": "Andrii (hiqsol) & Kai (kai3769)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kai3769/captaiha"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0",
+    "eslint": "^9.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ]
+}
