@@ -9,6 +9,8 @@
 export type { Challenge, ClassifyResult, SuiteResult, Signals, EntityType, ChallengeOptions, ChallengeType, ChallengeProvider, VerifyResult } from './types.js';
 export { createChallenge, classify, verify } from './core/challenge.js';
 export { register, listTypes } from './core/registry.js';
+export { createSuite, classifySuite } from './core/suite.js';
+export type { Suite, SuiteConfig } from './core/suite.js';
 
 // Auto-register built-in challenge types
 import { register } from './core/registry.js';
