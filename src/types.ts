@@ -70,11 +70,20 @@ export interface ChallengeOptions {
   timeLimitMs?: number;
 }
 
+/** Legacy binary result (kept for backward compat) */
+export interface VerifyResult {
+  passed: boolean;
+  ms?: number;
+  reason?: string;
+}
+
 /** Interface that each challenge type must implement */
 export interface ChallengeProvider {
   type: ChallengeType;
   /** Generate a new challenge */
   generate(options: ChallengeOptions): Challenge;
-  /** Classify an entity's response — returns signals, not just pass/fail */
-  classify(challenge: Challenge, response: unknown): ClassifyResult;
+  /** Three-tier classification — returns signals + entity type */
+  classify(challenge: Challenge, response: unknown, elapsedMs: number): ClassifyResult;
+  /** Legacy binary verify (optional, derived from classify if absent) */
+  verify?(challenge: Challenge, response: unknown): VerifyResult;
 }

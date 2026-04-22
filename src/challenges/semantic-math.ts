@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import type { Challenge, ChallengeOptions, ChallengeProvider, VerifyResult } from '../types.js';
+import type { Challenge, ChallengeOptions, ChallengeProvider, ClassifyResult } from '../types.js';
 
 /**
  * Semantic Math challenge (inspired by MoltCaptcha SMHL):
@@ -58,41 +58,42 @@ export const semanticMath: ChallengeProvider = {
     };
   },
 
-  verify(challenge: Challenge, response: unknown): VerifyResult {
+  classify(challenge: Challenge, response: unknown, elapsedMs: number): ClassifyResult {
     const { topic, wordCount, targetAsciiSum, tolerance } = challenge.payload as {
-      topic: string;
-      wordCount: number;
-      targetAsciiSum: number;
-      tolerance: number;
+      topic: string; wordCount: number; targetAsciiSum: number; tolerance: number;
     };
 
     if (typeof response !== 'string') {
-      return { passed: false, reason: 'Response must be a string' };
+      return { entity: 'unclassified', confidence: 0, signals: { reasoning: false, speed: elapsedMs, creativity: 0 }, reason: 'Response must be a string' };
     }
 
     const text = response.trim();
     const words = text.split(/\s+/);
-
-    // Check word count
-    if (words.length !== wordCount) {
-      return { passed: false, reason: `Expected ${wordCount} words, got ${words.length}` };
-    }
-
-    // Check ASCII sum within tolerance
     const sum = asciiSum(text);
     const diff = Math.abs(sum - targetAsciiSum);
-    if (diff > tolerance) {
-      return { passed: false, reason: `ASCII sum ${sum} is ${diff} away from target ${targetAsciiSum} (tolerance: ±${tolerance})` };
-    }
 
-    // Basic semantic check: at least one word should relate to the topic
-    // (In production, use an embedding model for proper semantic verification)
-    const lowerText = text.toLowerCase();
-    if (!lowerText.includes(topic.toLowerCase())) {
-      // Relaxed check — just warn, don't fail (proper semantic check needs embeddings)
-      // For v0.1, we pass but note the potential issue
-    }
+    const wordCountOk = words.length === wordCount;
+    const checksumOk = diff <= tolerance;
+    const topicRelevant = text.toLowerCase().includes(topic.toLowerCase());
+    const fast = elapsedMs < challenge.timeLimitMs;
 
-    return { passed: true };
+    // Creativity signal: topic relevance + not just repeating the topic word
+    const uniqueWords = new Set(words.map(w => w.toLowerCase()));
+    const creativityScore = topicRelevant ? Math.min(1, uniqueWords.size / words.length) : 0;
+
+    // Three-tier:
+    //   AI: creative text ✅ + correct checksum ✅ + fast ✅
+    //   Computer: correct checksum but no creativity (gibberish to hit target)
+    //   Human: creative text but can't hit checksum under time pressure
+    if (wordCountOk && checksumOk && creativityScore > 0.5 && fast) {
+      return { entity: 'ai', confidence: 0.93, signals: { reasoning: true, speed: elapsedMs, creativity: creativityScore } };
+    }
+    if (checksumOk && fast && creativityScore <= 0.3) {
+      return { entity: 'computer', confidence: 0.82, signals: { reasoning: false, speed: elapsedMs, creativity: creativityScore } };
+    }
+    if (topicRelevant && creativityScore > 0.5 && (!checksumOk || !fast)) {
+      return { entity: 'human', confidence: 0.78, signals: { reasoning: true, speed: elapsedMs, creativity: creativityScore } };
+    }
+    return { entity: 'unclassified', confidence: 0.3, signals: { reasoning: topicRelevant, speed: elapsedMs, creativity: creativityScore }, reason: 'Ambiguous signal pattern' };
   },
 };

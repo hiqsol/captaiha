@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import type { Challenge, ChallengeOptions, ChallengeProvider, VerifyResult } from '../types.js';
+import type { Challenge, ChallengeOptions, ChallengeProvider, ClassifyResult } from '../types.js';
 
 /**
  * Reasoning + Hash challenge (replaces pure sha256-chain).
@@ -55,8 +55,8 @@ const riddles: Riddle[] = [
     answer: '10', // 1100100 = 100, sqrt = 10
   },
   {
-    question: 'ROT13 of "pncgnvun" — what is the decoded word?',
-    answer: 'captaiha',
+    question: 'ROT13 of "pncgnvpun" — what is the decoded word?',
+    answer: 'captaicha',
   },
   {
     question: 'What is the sum of ASCII values of "AI"? Express as string.',
@@ -98,13 +98,29 @@ export const reasoningHash: ChallengeProvider = {
     };
   },
 
-  verify(challenge: Challenge, response: unknown): VerifyResult {
-    const { _expectedHash } = challenge.payload as { _expectedHash: string };
-    const agentHash = typeof response === 'string' ? response.trim().toLowerCase() : String(response);
+  classify(challenge: Challenge, response: unknown, elapsedMs: number): ClassifyResult {
+    const { _expectedHash, _expectedAnswer } = challenge.payload as { _expectedHash: string; _expectedAnswer: string };
+    const resp = typeof response === 'object' && response !== null ? response as Record<string, unknown> : { hash: response };
+    const agentHash = typeof resp.hash === 'string' ? resp.hash.trim().toLowerCase() : String(resp.hash ?? response);
+    const agentAnswer = typeof resp.answer === 'string' ? resp.answer.trim().toLowerCase() : undefined;
 
-    if (agentHash === _expectedHash) {
-      return { passed: true };
+    const hashCorrect = agentHash === _expectedHash;
+    const riddleCorrect = agentAnswer === _expectedAnswer || hashCorrect; // correct hash implies correct riddle
+    const fast = elapsedMs < challenge.timeLimitMs;
+
+    // Three-tier classification based on signal combination:
+    //   AI: reasoning ✅ + speed ✅  (solved riddle AND hash fast)
+    //   Computer: speed ✅ only      (maybe hash but no reasoning)
+    //   Human: reasoning ✅ + slow   (solved riddle but too slow for hash)
+    if (riddleCorrect && hashCorrect && fast) {
+      return { entity: 'ai', confidence: 0.95, signals: { reasoning: true, speed: elapsedMs, creativity: 0.3 } };
     }
-    return { passed: false, reason: 'Incorrect hash — either wrong riddle answer or wrong hash computation' };
+    if (fast && !riddleCorrect) {
+      return { entity: 'computer', confidence: 0.85, signals: { reasoning: false, speed: elapsedMs, creativity: 0 } };
+    }
+    if (riddleCorrect && !fast) {
+      return { entity: 'human', confidence: 0.80, signals: { reasoning: true, speed: elapsedMs, creativity: 0.5 } };
+    }
+    return { entity: 'unclassified', confidence: 0.3, signals: { reasoning: riddleCorrect, speed: elapsedMs, creativity: 0 }, reason: 'Ambiguous signal pattern' };
   },
 };

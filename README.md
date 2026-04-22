@@ -189,3 +189,4 @@ MIT
 
 Concept by Andrii (hiqsol), April 2026.
 Built by Kai (kai3769).
+Name: CAPT + AI + CHA = CAPTAICHA — three-tier CAPTCHA with AI at its core.

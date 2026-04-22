@@ -1,13 +1,13 @@
-// CAPTAIHA — Reverse CAPTCHA for AI agents
-// CAPTCHA with AI instead of second C
+// CAPTAICHA — Three-tier CAPTCHA: AI vs Computer vs Human
+// CAPT + AI + CHA = CAPTAICHA
 //
-// Three-tier filtering:
-//   ❌ Human — too fast / too complex for working memory
-//   ❌ Dumb bot — no reasoning, can't understand the task
-//   ✅ AI agent — fast AND intelligent
+// Every challenge is a prism splitting responses into three signals:
+//   🤖 AI agent  — reasoning ✅  speed ✅  creativity ✅
+//   💻 Computer  — reasoning ❌  speed ✅  creativity ❌
+//   🧑 Human     — reasoning ✅  speed ❌  creativity ✅
 
-export type { Challenge, VerifyResult, ChallengeOptions, ChallengeType, ChallengeProvider } from './types.js';
-export { createChallenge, verify } from './core/challenge.js';
+export type { Challenge, ClassifyResult, SuiteResult, Signals, EntityType, ChallengeOptions, ChallengeType, ChallengeProvider, VerifyResult } from './types.js';
+export { createChallenge, classify, verify } from './core/challenge.js';
 export { register, listTypes } from './core/registry.js';
 
 // Auto-register built-in challenge types

@@ -1,51 +1,51 @@
-import type { Challenge, ChallengeType, ChallengeOptions, VerifyResult } from '../types.js';
+import type { Challenge, ChallengeType, ChallengeOptions, ClassifyResult, VerifyResult } from '../types.js';
 import { getProvider } from './registry.js';
 
-/** Pending challenges awaiting verification (in-memory, TTL-based) */
-const pending = new Map<string, { challenge: Challenge; expiresAt: number }>();
+/** Pending challenges awaiting classification (in-memory, TTL-based) */
+const pending = new Map<string, { challenge: Challenge; issuedAt: number }>();
 
 /** Create a new challenge of the given type */
 export function createChallenge(type: ChallengeType, options: ChallengeOptions = {}): Challenge {
   const provider = getProvider(type);
   const challenge = provider.generate(options);
 
-  // Store for verification with expiry = 2x time limit
   const ttl = challenge.timeLimitMs * 2;
-  pending.set(challenge.id, {
-    challenge,
-    expiresAt: Date.now() + ttl,
-  });
+  pending.set(challenge.id, { challenge, issuedAt: Date.now() });
 
-  // Schedule cleanup
   setTimeout(() => pending.delete(challenge.id), ttl);
 
-  return challenge;
+  // Strip internal fields from returned challenge (don't leak answers)
+  const { id, type: t, payload, timeLimitMs, createdAt } = challenge;
+  const safePayload = Object.fromEntries(
+    Object.entries(payload as Record<string, unknown>).filter(([k]) => !k.startsWith('_'))
+  );
+  return { id, type: t, payload: safePayload, timeLimitMs, createdAt };
 }
 
-/** Verify an agent's response to a challenge */
-export function verify(challengeId: string, response: unknown): VerifyResult {
+/** Three-tier classify — the core CAPTAICHA operation */
+export function classify(challengeId: string, response: unknown): ClassifyResult {
   const entry = pending.get(challengeId);
   if (!entry) {
-    return { passed: false, reason: 'Challenge not found or expired' };
+    return { entity: 'unclassified', confidence: 0, signals: { reasoning: false, speed: Infinity, creativity: 0 }, reason: 'Challenge not found or expired' };
   }
 
-  const { challenge, expiresAt } = entry;
-  const now = Date.now();
+  const { challenge, issuedAt } = entry;
+  const elapsed = Date.now() - issuedAt;
 
-  // Check time limit
-  const elapsed = now - new Date(challenge.createdAt).getTime();
-  if (elapsed > challenge.timeLimitMs) {
-    pending.delete(challengeId);
-    return { passed: false, ms: elapsed, reason: `Time limit exceeded: ${elapsed}ms > ${challenge.timeLimitMs}ms` };
-  }
-
-  // Delegate to provider
   const provider = getProvider(challenge.type);
-  const result = provider.verify(challenge, response);
+  const result = provider.classify(challenge, response, elapsed);
   result.ms = elapsed;
 
-  // Remove used challenge (one-time use)
   pending.delete(challengeId);
-
   return result;
+}
+
+/** Legacy binary verify (delegates to classify) */
+export function verify(challengeId: string, response: unknown): VerifyResult {
+  const result = classify(challengeId, response);
+  return {
+    passed: result.entity === 'ai',
+    ms: result.ms,
+    reason: result.entity === 'ai' ? undefined : `Classified as ${result.entity} (confidence: ${result.confidence})`,
+  };
 }

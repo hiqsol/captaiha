@@ -1,7 +1,7 @@
 {
-  "name": "captaiha",
-  "version": "0.1.0",
-  "description": "Reverse CAPTCHA for AI agents — tests that AI passes but humans fail",
+  "name": "captaicha",
+  "version": "0.2.0",
+  "description": "Three-tier CAPTCHA classifier: AI vs Computer vs Human — CAPT+AI+CHA",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -13,8 +13,11 @@
   },
   "keywords": [
     "captcha",
+    "captaicha",
     "ai-agent",
     "verification",
+    "three-tier",
+    "classifier",
     "anti-captcha",
     "agent-trust"
   ],
@@ -22,7 +25,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kai3769/captaiha"
+    "url": "https://github.com/hiqsol/captaicha"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

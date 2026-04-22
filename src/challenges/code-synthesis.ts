@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import type { Challenge, ChallengeOptions, ChallengeProvider, VerifyResult } from '../types.js';
+import type { Challenge, ChallengeOptions, ChallengeProvider, ClassifyResult } from '../types.js';
 
 /** Code synthesis templates — function signature + test cases */
 interface CodeChallenge {
@@ -67,34 +67,46 @@ export const codeSynthesis: ChallengeProvider = {
     };
   },
 
-  verify(challenge: Challenge, response: unknown): VerifyResult {
+  classify(challenge: Challenge, response: unknown, elapsedMs: number): ClassifyResult {
     const { _expected } = challenge.payload as { _expected: Array<{ input: unknown[]; expected: unknown }> };
+    const fast = elapsedMs < challenge.timeLimitMs;
 
     if (typeof response !== 'string') {
-      return { passed: false, reason: 'Response must be a function string' };
+      return { entity: 'unclassified', confidence: 0, signals: { reasoning: false, speed: elapsedMs, creativity: 0 }, reason: 'Response must be a function string' };
     }
 
     try {
-      // Sandbox: create function from response string
       const fn = new Function('return ' + response)();
       if (typeof fn !== 'function') {
-        return { passed: false, reason: 'Response did not evaluate to a function' };
+        // Computers might return something non-functional fast
+        return { entity: fast ? 'computer' : 'unclassified', confidence: 0.5, signals: { reasoning: false, speed: elapsedMs, creativity: 0 }, reason: 'Not a function' };
       }
 
-      // Run test cases
+      let passed = 0;
       for (const tc of _expected) {
         const actual = fn(...tc.input);
-        if (JSON.stringify(actual) !== JSON.stringify(tc.expected)) {
-          return {
-            passed: false,
-            reason: `Test failed: input=${JSON.stringify(tc.input)} expected=${JSON.stringify(tc.expected)} got=${JSON.stringify(actual)}`,
-          };
-        }
+        if (JSON.stringify(actual) === JSON.stringify(tc.expected)) passed++;
       }
 
-      return { passed: true };
+      const allPassed = passed === _expected.length;
+      const creativity = response.length < 200 ? 0.8 : 0.4; // concise = more creative
+
+      // Three-tier:
+      //   AI: understands spec + generates working code + fast
+      //   Computer: fast but can't understand natural language spec
+      //   Human: understands spec but too slow to write + test under pressure
+      if (allPassed && fast) {
+        return { entity: 'ai', confidence: 0.94, signals: { reasoning: true, speed: elapsedMs, creativity } };
+      }
+      if (!allPassed && fast) {
+        return { entity: 'computer', confidence: 0.75, signals: { reasoning: false, speed: elapsedMs, creativity: 0.1 } };
+      }
+      if (allPassed && !fast) {
+        return { entity: 'human', confidence: 0.82, signals: { reasoning: true, speed: elapsedMs, creativity } };
+      }
+      return { entity: 'unclassified', confidence: 0.3, signals: { reasoning: passed > 0, speed: elapsedMs, creativity: 0 }, reason: `${passed}/${_expected.length} tests passed` };
     } catch (err) {
-      return { passed: false, reason: `Execution error: ${(err as Error).message}` };
+      return { entity: fast ? 'computer' : 'unclassified', confidence: 0.4, signals: { reasoning: false, speed: elapsedMs, creativity: 0 }, reason: `Execution error: ${(err as Error).message}` };
     }
   },
 };
