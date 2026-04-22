@@ -15,7 +15,11 @@ import { register } from './core/registry.js';
 import { codeSynthesis } from './challenges/code-synthesis.js';
 import { semanticMath } from './challenges/semantic-math.js';
 import { reasoningHash } from './challenges/reasoning-hash.js';
+import { patternCompletion } from './challenges/pattern-completion.js';
+import { adversarialDecode } from './challenges/adversarial-decode.js';
 
 register(codeSynthesis);
 register(semanticMath);
 register(reasoningHash);
+register(patternCompletion);
+register(adversarialDecode);
