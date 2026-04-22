@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPTAICHA — Three-Tier CAPTCHA Demo</title>
+<style>
+:root {
+  --ai: #8b5cf6;
+  --cpu: #3b82f6;
+  --human: #10b981;
+  --bg: #0f1117;
+  --card: #1a1d2e;
+  --border: #2a2d3e;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --glow-ai: rgba(139,92,246,.25);
+  --glow-cpu: rgba(59,130,246,.25);
+  --glow-human: rgba(16,185,129,.25);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+a { color: var(--ai); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Hero */
+.hero {
+  text-align: center;
+  padding: 4rem 1rem 3rem;
+  background: linear-gradient(180deg, rgba(139,92,246,.08) 0%, transparent 100%);
+}
+.hero h1 {
+  font-size: 3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: .5rem;
+}
+.hero h1 .ai { color: var(--ai); }
+.hero .tagline {
+  font-size: 1.25rem;
+  color: var(--muted);
+  max-width: 600px;
+  margin: 0 auto 2rem;
+}
+.hero .formula {
+  display: inline-block;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: .75rem 2rem;
+  font-family: monospace;
+  font-size: 1.1rem;
+  color: var(--muted);
+}
+.hero .formula b { color: var(--ai); }
+
+/* Classification Table */
+.section { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; }
+.section h2 { font-size: 1.75rem; margin-bottom: 1.5rem; text-align: center; }
+.class-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.class-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  text-align: center;
+  transition: transform .2s, box-shadow .2s;
+}
+.class-card:hover { transform: translateY(-4px); }
+.class-card.ai { border-color: var(--ai); box-shadow: 0 4px 24px var(--glow-ai); }
+.class-card.cpu { border-color: var(--cpu); box-shadow: 0 4px 24px var(--glow-cpu); }
+.class-card.human { border-color: var(--human); box-shadow: 0 4px 24px var(--glow-human); }
+.class-card .icon { font-size: 2.5rem; margin-bottom: .5rem; }
+.class-card .label { font-size: 1.1rem; font-weight: 700; margin-bottom: .75rem; }
+.class-card.ai .label { color: var(--ai); }
+.class-card.cpu .label { color: var(--cpu); }
+.class-card.human .label { color: var(--human); }
+.signals { display: flex; flex-direction: column; gap: .4rem; font-size: .9rem; }
+.sig { display: flex; justify-content: space-between; }
+.sig .check { font-weight: 700; }
+.sig .yes { color: #22c55e; }
+.sig .no { color: #ef4444; }
+
+/* Prism Diagram */
+.prism-section { text-align: center; padding: 2rem 1rem; }
+.prism-svg { max-width: 500px; margin: 0 auto; }
+
+/* Challenge Demo */
+.challenge-section { padding: 2rem 1rem; max-width: 900px; margin: 0 auto; }
+.challenge-tabs {
+  display: flex;
+  gap: .5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.tab-btn {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .5rem 1rem;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: .9rem;
+  transition: all .2s;
+}
+.tab-btn:hover { border-color: var(--ai); color: var(--text); }
+.tab-btn.active { background: var(--ai); border-color: var(--ai); color: #fff; }
+
+.challenge-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 2rem;
+  min-height: 300px;
+}
+.challenge-box h3 { font-size: 1.2rem; margin-bottom: .5rem; }
+.challenge-box .desc { color: var(--muted); margin-bottom: 1.5rem; font-size: .95rem; }
+.challenge-area { margin-bottom: 1.5rem; }
+.challenge-area label { display: block; color: var(--muted); font-size: .85rem; margin-bottom: .4rem; }
+.challenge-area textarea, .challenge-area input[type="text"] {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .75rem;
+  color: var(--text);
+  font-family: monospace;
+  font-size: .95rem;
+  resize: vertical;
+}
+.challenge-area textarea { min-height: 80px; }
+.challenge-area textarea:focus, .challenge-area input:focus {
+  outline: none;
+  border-color: var(--ai);
+}
+.btn-row { display: flex; gap: .75rem; flex-wrap: wrap; }
+.btn {
+  padding: .6rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  font-size: .95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+}
+.btn-primary { background: var(--ai); color: #fff; }
+.btn-primary:hover { background: #7c3aed; }
+.btn-sim { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+.btn-sim:hover { border-color: var(--ai); color: var(--text); }
+
+/* Result display */
+.result-panel {
+  margin-top: 1.5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: none;
+}
+.result-panel.show { display: block; animation: fadeIn .3s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.result-header { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; }
+.result-icon { font-size: 2rem; }
+.result-entity { font-size: 1.2rem; font-weight: 700; }
+.result-conf { color: var(--muted); font-size: .9rem; }
+.signal-bars { display: flex; gap: 1rem; flex-wrap: wrap; }
+.signal-bar { flex: 1; min-width: 120px; }
+.signal-bar .bar-label { font-size: .8rem; color: var(--muted); margin-bottom: .25rem; }
+.bar-track { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; transition: width .5s ease; }
+.bar-fill.reasoning { background: var(--ai); }
+.bar-fill.speed { background: var(--cpu); }
+.bar-fill.creativity { background: var(--human); }
+
+/* Comparison */
+.comparison { max-width: 700px; margin: 2rem auto; }
+.comp-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: .75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.comp-label { width: 140px; font-weight: 600; font-size: .95rem; }
+.comp-bar {
+  flex: 1;
+  height: 28px;
+  background: var(--card);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+.comp-segments { display: flex; height: 100%; }
+.comp-seg { height: 100%; display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 600; color: #fff; }
+.seg-human { background: var(--human); }
+.seg-bot { background: #ef4444; }
+.seg-ai { background: var(--ai); }
+.seg-cpu { background: var(--cpu); }
+.seg-unknown { background: var(--border); color: var(--muted); }
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--muted);
+  font-size: .85rem;
+  border-top: 1px solid var(--border);
+  margin-top: 3rem;
+}
+.footer .gh-link { display: inline-flex; align-items: center; gap: .4rem; color: var(--text); font-weight: 600; margin-bottom: .5rem; }
+
+/* Responsive */
+@media (max-width: 640px) {
+  .hero h1 { font-size: 2rem; }
+  .class-grid { grid-template-columns: 1fr; }
+  .challenge-tabs { gap: .25rem; }
+  .tab-btn { font-size: .8rem; padding: .4rem .75rem; }
+}
+
+/* Timer */
+.timer { font-family: monospace; font-size: 1.5rem; color: var(--ai); text-align: center; margin: .5rem 0; }
+.timer.running { animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.5; } }
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<header class="hero">
+  <h1>CAPT<span class="ai">AI</span>CHA</h1>
+  <p class="tagline">Three-tier CAPTCHA that classifies <em>what</em> is solving — AI, Computer, or Human</p>
+  <div class="formula">CAPT + <b>AI</b> + CHA = CAPT<b>AI</b>CHA</div>
+</header>
+
+<!-- Three Tiers -->
+<section class="section">
+  <h2>Three-Tier Classification</h2>
+  <div class="class-grid">
+    <div class="class-card ai">
+      <div class="icon">🤖</div>
+      <div class="label">AI Agent</div>
+      <div class="signals">
+        <div class="sig"><span>Reasoning</span><span class="check yes">✅ High</span></div>
+        <div class="sig"><span>Speed</span><span class="check yes">✅ Fast</span></div>
+        <div class="sig"><span>Creativity</span><span class="check yes">✅ Yes</span></div>
+      </div>
+    </div>
+    <div class="class-card cpu">
+      <div class="icon">💻</div>
+      <div class="label">Computer</div>
+      <div class="signals">
+        <div class="sig"><span>Reasoning</span><span class="check no">❌ None</span></div>
+        <div class="sig"><span>Speed</span><span class="check yes">✅ Fast</span></div>
+        <div class="sig"><span>Creativity</span><span class="check no">❌ No</span></div>
+      </div>
+    </div>
+    <div class="class-card human">
+      <div class="icon">🧑</div>
+      <div class="label">Human</div>
+      <div class="signals">
+        <div class="sig"><span>Reasoning</span><span class="check yes">✅ High</span></div>
+        <div class="sig"><span>Speed</span><span class="check no">❌ Slow</span></div>
+        <div class="sig"><span>Creativity</span><span class="check yes">✅ Yes</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Prism Diagram -->
+<section class="prism-section">
+  <h2>The Prism Principle</h2>
+  <p style="color:var(--muted);max-width:600px;margin:0 auto 1.5rem;">Each challenge acts as a prism — splitting the response into three measurable signals</p>
+  <svg class="prism-svg" viewBox="0 0 500 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Input beam -->
+    <line x1="50" y1="140" x2="180" y2="140" stroke="#94a3b8" stroke-width="3" stroke-dasharray="8,4"/>
+    <text x="40" y="125" fill="#94a3b8" font-size="12" font-family="sans-serif">Response</text>
+    <!-- Prism -->
+    <polygon points="200,60 300,140 200,220" fill="rgba(139,92,246,.15)" stroke="#8b5cf6" stroke-width="2"/>
+    <text x="220" y="145" fill="#8b5cf6" font-size="14" font-weight="bold" font-family="sans-serif">CHALLENGE</text>
+    <!-- Output beams -->
+    <line x1="300" y1="120" x2="420" y2="60" stroke="#8b5cf6" stroke-width="2.5"/>
+    <line x1="300" y1="140" x2="420" y2="140" stroke="#3b82f6" stroke-width="2.5"/>
+    <line x1="300" y1="160" x2="420" y2="220" stroke="#10b981" stroke-width="2.5"/>
+    <!-- Labels -->
+    <text x="430" y="65" fill="#8b5cf6" font-size="13" font-weight="bold" font-family="sans-serif">Reasoning</text>
+    <text x="430" y="145" fill="#3b82f6" font-size="13" font-weight="bold" font-family="sans-serif">Speed</text>
+    <text x="430" y="225" fill="#10b981" font-size="13" font-weight="bold" font-family="sans-serif">Creativity</text>
+    <!-- Circles at endpoints -->
+    <circle cx="420" cy="60" r="5" fill="#8b5cf6"/>
+    <circle cx="420" cy="140" r="5" fill="#3b82f6"/>
+    <circle cx="420" cy="220" r="5" fill="#10b981"/>
+  </svg>
+</section>
+
+<!-- Interactive Demo -->
+<section class="challenge-section">
+  <h2>🧪 Try a Challenge</h2>
+  <div class="challenge-tabs">
+    <button class="tab-btn active" data-challenge="reasoning-hash">🧩 Reasoning Hash</button>
+    <button class="tab-btn" data-challenge="pattern-completion">🔢 Pattern</button>
+    <button class="tab-btn" data-challenge="semantic-math">✍️ Semantic Math</button>
+    <button class="tab-btn" data-challenge="adversarial-decode">🔓 Adversarial</button>
+    <button class="tab-btn" data-challenge="code-synthesis">💻 Code Synth</button>
+  </div>
+  <div class="challenge-box" id="challengeBox"></div>
+</section>
+
+<!-- Comparison -->
+<section class="section">
+  <h2>How It Compares</h2>
+  <div class="comparison">
+    <div class="comp-row">
+      <div class="comp-label">Traditional CAPTCHA</div>
+      <div class="comp-bar">
+        <div class="comp-segments">
+          <div class="comp-seg seg-human" style="width:50%">Human</div>
+          <div class="comp-seg seg-bot" style="width:50%">Bot</div>
+        </div>
+      </div>
+    </div>
+    <div class="comp-row">
+      <div class="comp-label">Reverse CAPTCHA</div>
+      <div class="comp-bar">
+        <div class="comp-segments">
+          <div class="comp-seg seg-ai" style="width:50%">AI</div>
+          <div class="comp-seg seg-unknown" style="width:50%">Everything Else</div>
+        </div>
+      </div>
+    </div>
+    <div class="comp-row">
+      <div class="comp-label" style="color:var(--ai);font-size:1.05rem;">CAPTAICHA</div>
+      <div class="comp-bar">
+        <div class="comp-segments">
+          <div class="comp-seg seg-ai" style="width:33.3%">🤖 AI</div>
+          <div class="comp-seg seg-cpu" style="width:33.3%">💻 Computer</div>
+          <div class="comp-seg seg-human" style="width:33.4%">🧑 Human</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Install -->
+<section class="section" style="text-align:center;">
+  <h2>Get Started</h2>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;display:inline-block;margin:1rem 0;">
+    <code style="font-size:1.1rem;color:var(--ai);">npm install captaicha</code>
+  </div>
+  <p style="color:var(--muted);margin-top:1rem;">TypeScript · Node.js 18+ · MIT License</p>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <a class="gh-link" href="https://github.com/hiqsol/captaicha">⭐ GitHub — hiqsol/captaicha</a>
+  <p>Concept by Andrii (hiqsol) · Built by Kai (kai3769) · April 2026</p>
+</footer>
+
+<script>
+// Challenge definitions
+const challenges = {
+  'reasoning-hash': {
+    title: '🧩 Reasoning Hash',
+    desc: 'Solve a riddle AND compute a SHA-256 hash chain. AI does both fast; humans get the riddle but not the hash; computers hash fast but miss the riddle.',
+    prompt: 'What has keys but no locks, space but no room, and you can enter but can\'t go inside?',
+    inputLabel: 'Your answer to the riddle:',
+    placeholder: 'Type your answer...',
+    inputType: 'text',
+    answer: 'keyboard',
+    simulations: {
+      ai: { answer: 'keyboard', time: 800, reasoning: true, speed: 800, creativity: 0.85 },
+      computer: { answer: 'ERROR_NO_SEMANTIC_MATCH', time: 50, reasoning: false, speed: 50, creativity: 0 },
+      human: { answer: 'keyboard', time: 12400, reasoning: true, speed: 12400, creativity: 0.7 },
+    }
+  },
+  'pattern-completion': {
+    title: '🔢 Pattern Completion',
+    desc: 'Continue the sequence. Tests pattern recognition speed and accuracy.',
+    prompt: '2, 6, 12, 20, 30, ?',
+    inputLabel: 'Next number in the sequence:',
+    placeholder: '...',
+    inputType: 'text',
+    answer: '42',
+    simulations: {
+      ai: { answer: '42', time: 600, reasoning: true, speed: 600, creativity: 0.6 },
+      computer: { answer: '35', time: 20, reasoning: false, speed: 20, creativity: 0 },
+      human: { answer: '42', time: 18000, reasoning: true, speed: 18000, creativity: 0.5 },
+    }
+  },
+  'semantic-math': {
+    title: '✍️ Semantic Math',
+    desc: 'Write a 5-word sentence about "sky" where the ASCII sum of characters equals 532. Requires creativity + computation.',
+    prompt: 'Write a 5-word sentence about "sky" where the sum of ASCII values of all characters (including spaces) equals 532.',
+    inputLabel: 'Your creative sentence:',
+    placeholder: 'Type a 5-word sentence...',
+    inputType: 'text',
+    answer: null,
+    simulations: {
+      ai: { answer: 'The sky glows at dusk', time: 1200, reasoning: true, speed: 1200, creativity: 0.92 },
+      computer: { answer: 'aaaa sky bbb cc ddd', time: 80, reasoning: false, speed: 80, creativity: 0.05 },
+      human: { answer: 'Blue sky over green hills', time: 45000, reasoning: true, speed: 45000, creativity: 0.88 },
+    }
+  },
+  'adversarial-decode': {
+    title: '🔓 Adversarial Decode',
+    desc: 'Decode an obfuscated instruction and follow it. Tests language understanding under noise.',
+    prompt: 'Decode and follow: "Wr1t3 th3 n4m3 0f th3 pl4n3t cl0s3st t0 th3 5un"',
+    inputLabel: 'Decoded answer:',
+    placeholder: 'Follow the decoded instruction...',
+    inputType: 'text',
+    answer: 'mercury',
+    simulations: {
+      ai: { answer: 'Mercury', time: 900, reasoning: true, speed: 900, creativity: 0.7 },
+      computer: { answer: 'wr1t3_th3_n4m3...', time: 30, reasoning: false, speed: 30, creativity: 0 },
+      human: { answer: 'Mercury', time: 15000, reasoning: true, speed: 15000, creativity: 0.6 },
+    }
+  },
+  'code-synthesis': {
+    title: '💻 Code Synthesis',
+    desc: 'Write a function from a spec. AI generates code fast; humans understand but are slow; computers can\'t grasp the spec.',
+    prompt: 'Write a function `isPalindrome(s)` that returns true if string s reads the same forwards and backwards (case-insensitive, ignore spaces).',
+    inputLabel: 'Your code:',
+    placeholder: 'function isPalindrome(s) {\n  ...\n}',
+    inputType: 'textarea',
+    answer: null,
+    simulations: {
+      ai: { answer: 'function isPalindrome(s){const c=s.toLowerCase().replace(/\\s/g,"");return c===c.split("").reverse().join("");}', time: 1500, reasoning: true, speed: 1500, creativity: 0.78 },
+      computer: { answer: 'PARSE_ERROR: cannot interpret natural language spec', time: 40, reasoning: false, speed: 40, creativity: 0 },
+      human: { answer: 'function isPalindrome(s) {\n  let clean = s.toLowerCase().replace(/ /g, "");\n  return clean === clean.split("").reverse().join("");\n}', time: 35000, reasoning: true, speed: 35000, creativity: 0.65 },
+    }
+  },
+};
+
+let startTime = null;
+let timerInterval = null;
+let currentChallenge = 'reasoning-hash';
+
+function renderChallenge(key) {
+  currentChallenge = key;
+  const c = challenges[key];
+  const box = document.getElementById('challengeBox');
+  clearInterval(timerInterval);
+  startTime = null;
+
+  const inputEl = c.inputType === 'textarea'
+    ? `<textarea id="userAnswer" placeholder="${c.placeholder}"></textarea>`
+    : `<input type="text" id="userAnswer" placeholder="${c.placeholder}"/>`;
+
+  box.innerHTML = `
+    <h3>${c.title}</h3>
+    <p class="desc">${c.desc}</p>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;font-family:monospace;font-size:.95rem;">
+      ${c.prompt}
+    </div>
+    <div class="timer" id="timer">0.000s</div>
+    <div class="challenge-area">
+      <label>${c.inputLabel}</label>
+      ${inputEl}
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="submitAnswer()">Submit</button>
+      <button class="btn btn-sim" onclick="simulate('ai')">🤖 Simulate AI</button>
+      <button class="btn btn-sim" onclick="simulate('computer')">💻 Simulate Computer</button>
+      <button class="btn btn-sim" onclick="simulate('human')">🧑 Simulate Human</button>
+    </div>
+    <div class="result-panel" id="resultPanel"></div>
+  `;
+
+  // Start timer when user starts typing
+  const input = document.getElementById('userAnswer');
+  input.addEventListener('focus', () => {
+    if (!startTime) {
+      startTime = performance.now();
+      const timerEl = document.getElementById('timer');
+      timerEl.classList.add('running');
+      timerInterval = setInterval(() => {
+        const elapsed = ((performance.now() - startTime) / 1000).toFixed(3);
+        timerEl.textContent = elapsed + 's';
+      }, 50);
+    }
+  });
+}
+
+function classify(reasoning, speedMs, creativity) {
+  // Speed thresholds
+  const fast = speedMs < 3000;
+  if (reasoning && fast && creativity > 0.3) return { entity: 'ai', icon: '🤖', color: 'var(--ai)' };
+  if (!reasoning && fast) return { entity: 'computer', icon: '💻', color: 'var(--cpu)' };
+  if (reasoning && !fast) return { entity: 'human', icon: '🧑', color: 'var(--human)' };
+  return { entity: 'unclassified', icon: '❓', color: 'var(--muted)' };
+}
+
+function showResult(entity, confidence, signals, elapsedMs) {
+  const panel = document.getElementById('resultPanel');
+  const cls = classify(signals.reasoning, signals.speed, signals.creativity);
+  const confPct = Math.round(confidence * 100);
+
+  // Normalize bars
+  const reasonPct = signals.reasoning ? 100 : 10;
+  const speedPct = Math.max(5, Math.min(100, 100 - (signals.speed / 500)));
+  const creativePct = Math.round(signals.creativity * 100);
+
+  panel.innerHTML = `
+    <div class="result-header">
+      <div class="result-icon">${cls.icon}</div>
+      <div>
+        <div class="result-entity" style="color:${cls.color};">${cls.entity.toUpperCase()}</div>
+        <div class="result-conf">Confidence: ${confPct}% · ${elapsedMs.toLocaleString()}ms</div>
+      </div>
+    </div>
+    <div class="signal-bars">
+      <div class="signal-bar">
+        <div class="bar-label">Reasoning: ${signals.reasoning ? '✅ Yes' : '❌ No'}</div>
+        <div class="bar-track"><div class="bar-fill reasoning" style="width:${reasonPct}%"></div></div>
+      </div>
+      <div class="signal-bar">
+        <div class="bar-label">Speed: ${signals.speed.toLocaleString()}ms</div>
+        <div class="bar-track"><div class="bar-fill speed" style="width:${speedPct}%"></div></div>
+      </div>
+      <div class="signal-bar">
+        <div class="bar-label">Creativity: ${creativePct}%</div>
+        <div class="bar-track"><div class="bar-fill creativity" style="width:${creativePct}%"></div></div>
+      </div>
+    </div>
+  `;
+  panel.classList.add('show');
+}
+
+function submitAnswer() {
+  clearInterval(timerInterval);
+  const elapsed = startTime ? Math.round(performance.now() - startTime) : 30000;
+  const answer = document.getElementById('userAnswer').value.trim().toLowerCase();
+  const c = challenges[currentChallenge];
+
+  // Simple reasoning check
+  let reasoning = false;
+  if (c.answer && answer.includes(c.answer.toLowerCase())) reasoning = true;
+  else if (!c.answer && answer.length > 10) reasoning = true;
+
+  const creativity = answer.length > 20 ? 0.7 : (answer.length > 5 ? 0.4 : 0.1);
+  const confidence = reasoning ? 0.87 : 0.72;
+
+  document.getElementById('timer').classList.remove('running');
+  document.getElementById('timer').textContent = (elapsed / 1000).toFixed(3) + 's';
+
+  showResult(null, confidence, { reasoning, speed: elapsed, creativity }, elapsed);
+
+  // Reset for next attempt
+  startTime = null;
+}
+
+function simulate(type) {
+  clearInterval(timerInterval);
+  startTime = null;
+  const c = challenges[currentChallenge];
+  const sim = c.simulations[type];
+
+  document.getElementById('userAnswer').value = sim.answer;
+  document.getElementById('timer').classList.remove('running');
+  document.getElementById('timer').textContent = (sim.time / 1000).toFixed(3) + 's';
+
+  const confidence = type === 'ai' ? 0.97 : (type === 'computer' ? 0.92 : 0.89);
+  showResult(type, confidence, { reasoning: sim.reasoning, speed: sim.speed, creativity: sim.creativity }, sim.time);
+}
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderChallenge(btn.dataset.challenge);
+  });
+});
+
+// Init
+renderChallenge('reasoning-hash');
+</script>
+</body>
+</html>
